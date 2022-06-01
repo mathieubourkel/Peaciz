@@ -33,7 +33,6 @@ contract Factory is IERC721Receiver, Ownable {
         uint pixelCount;
         Peaciz peaciz;
         address payable owner;
-        string uri;
     }
 
     // struct Artist{
@@ -46,11 +45,11 @@ contract Factory is IERC721Receiver, Ownable {
 
     mapping (uint => Pochette) pochettes;
     mapping (uint => mapping(uint => Pixel)) public pixelByPochette;
-    // mapping (address => Artist) private whitelist;
+   // mapping (address => Artist) private whitelist;
 
     event NewArtist(string name, string musicStyle, address artistAddress);
     event Authorized(string name, address artistAddress);
-    event NewPochette(uint pochetteId, address indexed pochetteAddress, address indexed owner, string uri);
+    event NewPochette(uint pochetteId, address indexed pochetteAddress, address indexed owner);
     event Mint(uint pochetteId, uint pixelId, uint price, address indexed pochetteAddress, address indexed owner, string uri);
 
     // modifier isAuthorized() {
@@ -76,12 +75,12 @@ contract Factory is IERC721Receiver, Ownable {
     //     emit Authorized(whitelist[_artistAddress].name, _artistAddress);
     // }
 
-    function createPochette(string memory _artistName, string memory _pochetteName, string memory _baseUri) external { 
-        //Peaciz peaciz = new Peaciz{salt: _salt}(_artistName, _pochetteName, _baseUri); , bytes32 _salt 
-        Peaciz peaciz = new Peaciz(_artistName, _pochetteName, _baseUri);
+    function createPochette(string memory _artistName, string memory _pochetteName, bytes32 _salt ) external { 
+        Peaciz peaciz = new Peaciz{salt: _salt}(_artistName, _pochetteName, address(this)); 
+        //Peaciz peaciz = new Peaciz(_artistName, _pochetteName, address(this));
         pochetteCount++;
-        pochettes[pochetteCount] = Pochette(pochetteCount, 0, peaciz, payable(msg.sender), _baseUri);
-        emit NewPochette(pochetteCount, address(peaciz), msg.sender, _baseUri);
+        pochettes[pochetteCount] = Pochette(pochetteCount, 0, peaciz, payable(msg.sender));
+        emit NewPochette(pochetteCount, address(peaciz), msg.sender);
      }
 
      function makeItem(uint _pochetteId, string memory _uri) external {
@@ -95,7 +94,7 @@ contract Factory is IERC721Receiver, Ownable {
     }
 
     function sellItem(uint _pochetteId, uint _pixelId, uint _price) external isValidNumber(_pochetteId, _pixelId){
-        Pixel memory pixel = pixelByPochette[_pochetteId][_pixelId];  
+        Pixel storage pixel = pixelByPochette[_pochetteId][_pixelId];  
         require(pixel.pixelId > 0 && pixel.pixelId <= pochettes[_pochetteId].pixelCount, "item doesnt exists");
         require(pixel.owner == msg.sender, "You are not the owner of the NFT");
         require(!pixel.onSale, "item already on the marketplace");
@@ -105,15 +104,16 @@ contract Factory is IERC721Receiver, Ownable {
     }
 
     function purchaseItem(uint _pochetteId, uint _pixelId) external payable isValidNumber(_pochetteId, _pixelId){
-        Pixel memory pixel = pixelByPochette[_pochetteId][_pixelId];  
+        Pixel storage pixel = pixelByPochette[_pochetteId][_pixelId];  
         require(pixel.pixelId > 0 && pixel.pixelId <= pochettes[_pochetteId].pixelCount, "item doesnt exists");
         require(pixel.onSale, "item not on the marketplace"); 
+        require(pixel.owner != msg.sender, "You are the owner of the NFT");
         uint _totalPrice = getTotalPrice(_pochetteId, _pixelId);
         require(msg.value >= _totalPrice, "not enough ether to cover item price and market fee");
         pixel.owner.transfer(pixel.price); 
         feeAccount.transfer(_totalPrice - pixel.price);
         pixel.onSale = false;
-      //  pixel.peaciz.transferFrom(pixel.owner, payable(msg.sender), _pixelId);
+        pixel.peaciz.transferFrom(address(this), payable(msg.sender), _pixelId);
         pixel.owner = payable(msg.sender);
        // emit Bought( _itemId, address(item.nft), item.tokenId, item.price, item.owner, msg.sender);
     }

@@ -11,20 +11,30 @@ contract Peaciz is ERC721URIStorage, Ownable, ReentrancyGuard {
 
     using Counters for Counters.Counter;
     Counters.Counter private tokenCount;
+    address private immutable marketplace;
 
-    constructor(string memory _name, string memory _symbol, string memory _baseUri)
+    constructor(string memory _name, string memory _symbol, address _marketplace)
         ERC721(_name, _symbol)
         ReentrancyGuard()
-        {}
+        {
+            marketplace = _marketplace;
+        }
 
-    function mint(string memory _tokenURI) public nonReentrant onlyOwner {
+    function mint(string memory _tokenURI) external nonReentrant onlyOwner {
         tokenCount.increment();
         _safeMint(msg.sender, tokenCount.current());
         _setTokenURI(tokenCount.current(), _tokenURI);
     }
 
-    function getCount() public view returns (uint) {
+    function getCount() external view returns (uint) {
         return tokenCount.current();
+    }
+
+    function isApprovedForAll(address owner, address operator) override public view returns(bool) {
+        if (address(marketplace) == operator) {
+            return true;
+        }
+        return super.isApprovedForAll(owner, operator);
     }
 
 }
