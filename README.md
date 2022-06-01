@@ -74,3 +74,4 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/t
 Empty Hardhat Infra
 >>>>>>> 79f9c346240f64dbcb0fa39081325ee3a88ce79b
 # hardHat-coquille
+# Peaciz
