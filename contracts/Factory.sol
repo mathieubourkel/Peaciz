@@ -3,19 +3,22 @@
 pragma solidity 0.8.13;
 
 import "./Peaciz.sol";
+import "./Artists.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract Factory is IERC721Receiver, Ownable {
 
     address payable public immutable feeAccount;
+    address public immutable artistsContract;
     uint public immutable feePercent;
     uint public rate = 1000000000000000000;
     uint private pochetteCount;
 
-    constructor(uint _feePercent) {
+    constructor(uint _feePercent, address _artistsContract) {
             feeAccount = payable(msg.sender);
             feePercent = _feePercent;
+            artistsContract = _artistsContract;
         }
 
     struct Pixel{
@@ -34,50 +37,29 @@ contract Factory is IERC721Receiver, Ownable {
         Peaciz peaciz;
         address payable owner;
     }
-
-    // struct Artist{
-    //     string name;
-    //     string musicStyle;
-    //     bool authorized;
-    //     bool registered;
-    //     uint pochetteCount;
-    // }
-
+ 
     mapping (uint => Pochette) pochettes;
     mapping (uint => mapping(uint => Pixel)) public pixelByPochette;
-   // mapping (address => Artist) private whitelist;
-
-    event NewArtist(string name, string musicStyle, address artistAddress);
-    event Authorized(string name, address artistAddress);
+    
     event NewPochette(uint pochetteId, address indexed pochetteAddress, address indexed owner);
     event Mint(uint pochetteId, uint pixelId, uint price, address indexed pochetteAddress, address indexed owner, string uri);
+    event Bought(uint pochetteId, uint pixelId, uint price, address indexed seller, address indexed buyer);
 
-    // modifier isAuthorized() {
-    //     require(whitelist[msg.sender].authorized == true, "you are not an authorized artist");
-    //     _;
-    // }
+  
+    modifier isAuthorized() {
+        Artists artists = Artists(artistsContract) ;
+        require(artists.getArtist(msg.sender) == true, "you are not an authorized artist");
+        _;
+    }
 
     modifier isValidNumber(uint _pochetteId, uint _pixelId) {
         require(_pochetteId > 0 && _pixelId > 0, "please enter a valid number");
         _;
     }
 
-    // function addArtist(string memory _artistName, string memory _musicStyle) external {
-    //     require(msg.sender != address(0), "you are nobody");
-    //     require(whitelist[msg.sender].registered == false, "you are already registered");
-    //     whitelist[msg.sender] = Artist(_artistName, _musicStyle, false, true, 0);
-    //     emit NewArtist(_artistName, _musicStyle, msg.sender);
-    // } 
-
-    // function authorizeArtist(address _artistAddress) external onlyOwner {
-    //     require(whitelist[_artistAddress].authorized == false, "you are already authorize");
-    //     whitelist[_artistAddress].authorized = true;
-    //     emit Authorized(whitelist[_artistAddress].name, _artistAddress);
-    // }
-
-    function createPochette(string memory _artistName, string memory _pochetteName, bytes32 _salt ) external { 
-        Peaciz peaciz = new Peaciz{salt: _salt}(_artistName, _pochetteName, address(this)); 
-        //Peaciz peaciz = new Peaciz(_artistName, _pochetteName, address(this));
+    function createPochette(string memory _artistName, string memory _pochetteName ) external { 
+        //Peaciz peaciz = new Peaciz{salt: _salt}(_artistName, _pochetteName, address(this)); , bytes32 _salt
+        Peaciz peaciz = new Peaciz(_artistName, _pochetteName, address(this));
         pochetteCount++;
         pochettes[pochetteCount] = Pochette(pochetteCount, 0, peaciz, payable(msg.sender));
         emit NewPochette(pochetteCount, address(peaciz), msg.sender);
@@ -114,8 +96,8 @@ contract Factory is IERC721Receiver, Ownable {
         feeAccount.transfer(_totalPrice - pixel.price);
         pixel.onSale = false;
         pixel.peaciz.transferFrom(address(this), payable(msg.sender), _pixelId);
+        emit Bought( _pochetteId, _pixelId, _totalPrice, pixel.owner, msg.sender);
         pixel.owner = payable(msg.sender);
-       // emit Bought( _itemId, address(item.nft), item.tokenId, item.price, item.owner, msg.sender);
     }
 
     function onERC721Received(address, address, uint256, bytes memory) public virtual override returns (bytes4) {
