@@ -18,6 +18,7 @@ contract Artists is Ownable {
 
     mapping (address => Artist) private whitelist;
     mapping (address => bool) public dao;
+    mapping (address => mapping(address => bool)) hasVoted;
 
     modifier isDAO(){
         require(dao[msg.sender] == true, "You are not a DAO user");
@@ -26,14 +27,14 @@ contract Artists is Ownable {
 
     event NewArtist(string name, string musicStyle, address artistAddress);
     event Authorized(string name, address artistAddress);
-    event Refused(string name, address artistAddress);
+    event Voted(address voter, address artist, bool vote);
 
     function addUserToDAO(address _addressDAO) external onlyOwner {
         require(dao[_addressDAO] == false, "user already in DAO");
         dao[_addressDAO] = true;
     }
 
-    function addArtist(string memory _artistName, string memory _musicStyle) external {
+    function addMeAsArtist(string memory _artistName, string memory _musicStyle) external {
         require(msg.sender != address(0), "you are nobody");
         require(whitelist[msg.sender].registered == false, "you are already registered");
         whitelist[msg.sender] = Artist(_artistName, _musicStyle, false, true, 0, 0, 0);
@@ -41,25 +42,21 @@ contract Artists is Ownable {
     } 
 
     function vote(bool _yes, address _artistAddress) external isDAO {
+        require(hasVoted[msg.sender][_artistAddress] == false, "you have already voted");
         if (_yes){
             whitelist[_artistAddress].yes++;
         } else if (!_yes) {
             whitelist[_artistAddress].no++;
         }
+        hasVoted[msg.sender][_artistAddress] = true;
+        emit Voted(msg.sender, _artistAddress, _yes);
     }
 
-    function authorizeArtist(address _artistAddress) external onlyOwner {
-        
-        require(whitelist[_artistAddress].authorized == false, "Artist already authorize");
-
-        if (whitelist[_artistAddress].yes >= whitelist[_artistAddress].no) {
-            whitelist[_artistAddress].authorized = true;
-            emit Authorized(whitelist[_artistAddress].name, _artistAddress);
-        } else {
-
-            whitelist[_artistAddress] = Artist("", "", false, false, 0, 0, 0);
-            emit Refused(whitelist[_artistAddress].name, _artistAddress);
-        } 
+    function authorizeMe() external { 
+        require(whitelist[msg.sender].authorized == false, "Artist already authorize");
+        require(whitelist[msg.sender].yes > whitelist[msg.sender].no + 10, "you have not enough vote to be authorize");
+        whitelist[msg.sender].authorized = true;
+        emit Authorized(whitelist[msg.sender].name, msg.sender);
     }
 
     function getArtist(address _artistAddress) external view returns(bool authorized) {

@@ -57,6 +57,10 @@ contract Factory is IERC721Receiver, Ownable {
         _;
     }
 
+    function onERC721Received(address, address, uint256, bytes memory) public virtual override returns (bytes4) {
+        return this.onERC721Received.selector;
+    }
+
     function createPochette(string memory _artistName, string memory _pochetteName ) external { 
         //Peaciz peaciz = new Peaciz{salt: _salt}(_artistName, _pochetteName, address(this)); , bytes32 _salt
         Peaciz peaciz = new Peaciz(_artistName, _pochetteName, address(this));
@@ -75,14 +79,19 @@ contract Factory is IERC721Receiver, Ownable {
         emit Mint(_pochetteId, _tempId, 0, address(pochettes[_pochetteId].peaciz), msg.sender, _uri);
     }
 
-    function sellItem(uint _pochetteId, uint _pixelId, uint _price) external isValidNumber(_pochetteId, _pixelId){
+    function manageItem(uint _pochetteId, uint _pixelId, uint _price) external isValidNumber(_pochetteId, _pixelId){
         Pixel storage pixel = pixelByPochette[_pochetteId][_pixelId];  
         require(pixel.pixelId > 0 && pixel.pixelId <= pochettes[_pochetteId].pixelCount, "item doesnt exists");
         require(pixel.owner == msg.sender, "You are not the owner of the NFT");
         require(!pixel.onSale, "item already on the marketplace");
         pochettes[_pochetteId].peaciz.safeTransferFrom(msg.sender, address(this), _pixelId);
-        pixel.onSale = true;
-        pixel.price = _price * rate;
+        if (!pixel.onSale) {
+            pixel.onSale = true;
+            pixel.price = _price * rate;
+        } else if (pixel.onSale) {
+            pixel.onSale = false;
+            pixel.price = 0;
+        }      
     }
 
     function purchaseItem(uint _pochetteId, uint _pixelId) external payable isValidNumber(_pochetteId, _pixelId){
@@ -90,7 +99,7 @@ contract Factory is IERC721Receiver, Ownable {
         require(pixel.pixelId > 0 && pixel.pixelId <= pochettes[_pochetteId].pixelCount, "item doesnt exists");
         require(pixel.onSale, "item not on the marketplace"); 
         require(pixel.owner != msg.sender, "You are the owner of the NFT");
-        uint _totalPrice = getTotalPrice(_pochetteId, _pixelId);
+        uint _totalPrice = pixelByPochette[_pochetteId][_pixelId].price*(100 + feePercent)/100;
         require(msg.value >= _totalPrice, "not enough ether to cover item price and market fee");
         pixel.owner.transfer(pixel.price); 
         feeAccount.transfer(_totalPrice - pixel.price);
@@ -98,13 +107,5 @@ contract Factory is IERC721Receiver, Ownable {
         pixel.peaciz.transferFrom(address(this), payable(msg.sender), _pixelId);
         emit Bought( _pochetteId, _pixelId, _totalPrice, pixel.owner, msg.sender);
         pixel.owner = payable(msg.sender);
-    }
-
-    function onERC721Received(address, address, uint256, bytes memory) public virtual override returns (bytes4) {
-        return this.onERC721Received.selector;
-    }
-
-    function getTotalPrice(uint _pochetteId, uint _pixelId) view public returns(uint) {
-        return(pixelByPochette[_pochetteId][_pixelId].price*(100 + feePercent)/100);
-    }
+    }  
 }
