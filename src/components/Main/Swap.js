@@ -1,9 +1,9 @@
 import React from "react";
 
-function Explore() {
+function Swap() {
     return (
         <div></div>
     )
 }
 
-export default Explore;
+export default Swap;
