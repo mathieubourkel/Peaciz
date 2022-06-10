@@ -8,12 +8,11 @@ function Nav({contracts, state}) {
         
         <nav className='navbar'> 
             <div className='navbar-logo'>
-                <img src={Logo} alt="logo" className='navbar-logo-image' />
+                <Link to="/">
+                    <img src={Logo} alt="logo" className='navbar-logo-image' />
+                </Link>  
             </div>
             <ul className='navbar-list'>
-                <li>
-                    <Link to="/">Peaciz</Link>
-                </li>
                 <li>
                     <Link to="/about">About</Link>
                 </li>
