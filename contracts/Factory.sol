@@ -83,7 +83,7 @@ contract Factory is IERC721Receiver, Ownable {
         Pixel storage pixel = pixelByPochette[_pochetteId][_pixelId];  
         require(pixel.pixelId > 0 && pixel.pixelId <= pochettes[_pochetteId].pixelCount, "item doesnt exists");
         require(pixel.owner == msg.sender, "You are not the owner of the NFT");
-        require(!pixel.onSale, "item already on the marketplace");
+        require(!pixel.onSale, "item already on the !!:marketplace");
         pochettes[_pochetteId].peaciz.safeTransferFrom(msg.sender, address(this), _pixelId);
         if (!pixel.onSale) {
             pixel.onSale = true;

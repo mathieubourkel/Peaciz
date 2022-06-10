@@ -7,11 +7,16 @@ async function main() {
   
     console.log("Account balance:", (await deployer.getBalance()).toString());
   
-    const Token = await ethers.getContractFactory("Token");
-    const token = await Token.deploy();
+    const Artists = await ethers.getContractFactory("Artists");
+    const artists = await Artists.deploy();
+
+    const Factory = await ethers.getContractFactory("Factory");
+    const factory = await Factory.deploy(1, artists.address);
   
-    console.log("Token address:", token.address);
-    saveFrontendFiles(token , "Token");
+    console.log("Artists address:", artists.address);
+    console.log("Factory address:", factory.address);
+    saveFrontendFiles(artists , "Artists");
+    saveFrontendFiles(factory , "Factory");
   }
 
   function saveFrontendFiles(contract, name) {
